@@ -8,15 +8,19 @@ build/
 dist/
 
 # Environment variables (never commit secrets)
-.env
-.env.*
+# The exception must stay after every .env pattern to take effect.
+.env*
 !.env.example
+
+# Private keys
+*.pem
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnpm-debug.log*
 
 # Testing
 coverage/
