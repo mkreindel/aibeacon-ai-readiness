@@ -1,6 +1,6 @@
 # Spec del MVP: AI Readiness Diagnostic (AI Beacon)
 
-Estado: borrador para aprobar. Fecha: 08/10/2026.
+Estado: aprobado por Marcelo el 08/10/2026.
 
 ## 1. Problema
 Los dueños de pymes no saben por dónde empezar con la IA ni qué les conviene automatizar primero. AI Beacon necesita una forma simple de mostrarles en qué punto están y, a la vez, conseguir contactos interesados.
