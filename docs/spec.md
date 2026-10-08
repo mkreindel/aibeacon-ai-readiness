@@ -1,6 +1,6 @@
 # Spec del MVP: AI Readiness Diagnostic (AI Beacon)
 
-Estado: borrador para aprobar. Fecha: 08/10/2026.
+Estado: aprobado por Marcelo el 08/10/2026.
 
 ## 1. Problema
 Los dueños de pymes no saben por dónde empezar con la IA ni qué les conviene automatizar primero. AI Beacon necesita una forma simple de mostrarles en qué punto están y, a la vez, conseguir contactos interesados.
@@ -27,6 +27,7 @@ Idioma de la app: inglés (mercado: pymes de Houston). Documentación del TFM: c
 ## 4. Flujo del visitante
 1. Landing con qué es el diagnóstico y cuánto tarda.
 2. Datos de la empresa: rubro (lista cerrada) y tamaño (1-10, 11-50, 51-200 empleados).
+   Rubros, basados en sectores NAICS y aprobados por Marcelo el 08/10/2026: Construction; Manufacturing; Wholesale & distribution; Retail; Transportation & logistics; Energy (oil & gas); Professional services (legal, accounting, consulting); Healthcare; Real estate; Hospitality & food services; Other.
 3. 15 preguntas, una dimensión por pantalla, con barra de progreso.
 4. Datos de contacto y casilla de consentimiento (obligatoria).
 5. Resultado: nivel, puntaje por dimensión (gráfico de barras) e informe.
@@ -51,7 +52,9 @@ Si el global es 70 o más pero Gobernanza es menor a 60, el nivel es 2: no se ll
 
 Todo el cálculo vive en una función pura con tests unitarios de cada borde (39/40, 69/70, Gobernanza 59/60).
 
-## 6. Banco de preguntas (borrador)
+Nota: los puntajes de dimensión solo toman 10 valores (0, 11, 22, 33, 44, 56, 67, 78, 89, 100), así que en la práctica el nivel 3 exige al menos 67 en Gobernanza. Los bordes de la regla se prueban sobre `getLevel`, que recibe los puntajes directamente.
+
+## 6. Banco de preguntas
 Opciones de cada pregunta en orden de valor 0 a 3.
 
 ### Datos
