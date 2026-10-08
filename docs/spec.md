@@ -27,6 +27,7 @@ Idioma de la app: inglés (mercado: pymes de Houston). Documentación del TFM: c
 ## 4. Flujo del visitante
 1. Landing con qué es el diagnóstico y cuánto tarda.
 2. Datos de la empresa: rubro (lista cerrada) y tamaño (1-10, 11-50, 51-200 empleados).
+   Rubros, basados en sectores NAICS y aprobados por Marcelo el 08/10/2026: Construction; Manufacturing; Wholesale & distribution; Retail; Transportation & logistics; Energy (oil & gas); Professional services (legal, accounting, consulting); Healthcare; Real estate; Hospitality & food services; Other.
 3. 15 preguntas, una dimensión por pantalla, con barra de progreso.
 4. Datos de contacto y casilla de consentimiento (obligatoria).
 5. Resultado: nivel, puntaje por dimensión (gráfico de barras) e informe.
