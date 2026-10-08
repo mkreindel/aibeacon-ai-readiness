@@ -8,6 +8,12 @@ export type DimensionAnswers = readonly [AnswerValue, AnswerValue, AnswerValue];
 export type Answers = Readonly<Record<Dimension, DimensionAnswers>>;
 export type Level = 1 | 2 | 3;
 
+export const LEVEL_NAMES: Readonly<Record<Level, string>> = {
+  1: "Individual use",
+  2: "Team methodology",
+  3: "Governed AI",
+};
+
 export interface DiagnosticScore {
   dimensions: Record<Dimension, number>;
   global: number;
