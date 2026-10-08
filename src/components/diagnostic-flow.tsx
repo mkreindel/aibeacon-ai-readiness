@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COMPANY_SIZES, INDUSTRIES, type CompanySize, type Industry } from "@/lib/company";
+import { ScoreBars } from "@/components/score-bars";
 import { DIMENSION_LABELS, QUESTIONS } from "@/lib/questions";
 import {
   DIMENSIONS,
@@ -317,22 +318,7 @@ export function DiagnosticFlow() {
       <p className="text-lg">
         Overall score: {score.global} / 100
       </p>
-      <ul aria-label="Score by area" className="flex flex-col gap-3">
-        {DIMENSIONS.map((dimension) => (
-          <li key={dimension} className="flex flex-col gap-1">
-            <div className="flex justify-between text-sm">
-              <span>{DIMENSION_LABELS[dimension]}</span>
-              <span>{score.dimensions[dimension]}</span>
-            </div>
-            <div aria-hidden="true" className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
-              <div
-                className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
-                style={{ width: `${score.dimensions[dimension]}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ScoreBars dimensions={score.dimensions} />
     </section>
   );
 }

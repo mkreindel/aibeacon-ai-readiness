@@ -14,10 +14,12 @@ const answersShape = Object.fromEntries(
   DIMENSIONS.map((dimension) => [dimension, dimensionAnswers]),
 ) as Record<Dimension, typeof dimensionAnswers>;
 
+export const answersSchema = z.strictObject(answersShape);
+
 export const submissionSchema = z.strictObject({
   industry: z.enum(INDUSTRIES),
   companySize: z.enum(COMPANY_SIZES),
-  answers: z.strictObject(answersShape),
+  answers: answersSchema,
   contact: z.strictObject({
     name: z.string().trim().min(1).max(200),
     email: z.string().trim().max(320).pipe(z.email()),
