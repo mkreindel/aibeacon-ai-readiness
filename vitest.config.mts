@@ -13,7 +13,7 @@ export default defineConfig({
     // Pure logic runs in node; component tests opt into jsdom with
     // a "// @vitest-environment jsdom" comment at the top of the file.
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "supabase/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
   },
 });
