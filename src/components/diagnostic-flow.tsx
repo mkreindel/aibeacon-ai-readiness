@@ -218,7 +218,7 @@ export function DiagnosticFlow() {
         }}
       >
         <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
-          Where should we send your results?
+          Almost done: tell us about you
         </h2>
         {(
           [

@@ -54,7 +54,7 @@ Todo el cálculo vive en una función pura con tests unitarios de cada borde (39
 
 Nota: los puntajes de dimensión solo toman 10 valores (0, 11, 22, 33, 44, 56, 67, 78, 89, 100), así que en la práctica el nivel 3 exige al menos 67 en Gobernanza. Los bordes de la regla se prueban sobre `getLevel`, que recibe los puntajes directamente.
 
-## 6. Banco de preguntas (borrador)
+## 6. Banco de preguntas
 Opciones de cada pregunta en orden de valor 0 a 3.
 
 ### Datos
