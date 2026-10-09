@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COMPANY_SIZES, INDUSTRIES, type CompanySize, type Industry } from "@/lib/company";
+import { ReportView } from "@/components/report-view";
 import { ScoreBars } from "@/components/score-bars";
 import { DIMENSION_LABELS, QUESTIONS } from "@/lib/questions";
+import type { Report } from "@/lib/report";
 import {
   DIMENSIONS,
   LEVEL_NAMES,
@@ -14,13 +16,14 @@ import {
 } from "@/lib/scoring";
 
 // Visitor flow from docs/spec.md, section 4. The contact step posts to /api/diagnostics,
-// which validates, scores and saves the diagnostic; the result shows the server's score.
+// which validates, scores, writes the AI report and saves the diagnostic; the result shows the
+// server's score and report. The report may be null (spec, section 7): then a notice is shown.
 
 type Step =
   | { kind: "company" }
   | { kind: "questions"; index: number }
   | { kind: "contact" }
-  | { kind: "result"; score: DiagnosticScore };
+  | { kind: "result"; score: DiagnosticScore; report: Report | null };
 
 type PartialAnswers = Record<Dimension, (AnswerValue | null)[]>;
 
@@ -29,6 +32,8 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RATE_LIMITED_MESSAGE =
   "You've sent several diagnostics in a short time. Please wait a while and try again.";
 const GENERIC_ERROR_MESSAGE = "We couldn't save your diagnostic. Please try again.";
+const NO_REPORT_MESSAGE =
+  "We couldn't generate your personalized report right now. Your scores above are saved.";
 
 const emptyAnswers = (): PartialAnswers =>
   Object.fromEntries(DIMENSIONS.map((dimension) => [dimension, [null, null, null]])) as PartialAnswers;
@@ -93,8 +98,11 @@ export function DiagnosticFlow() {
         }),
       });
       if (response.status === 201) {
-        const { score } = (await response.json()) as { score: DiagnosticScore };
-        setStep({ kind: "result", score });
+        const { score, report } = (await response.json()) as {
+          score: DiagnosticScore;
+          report: Report | null;
+        };
+        setStep({ kind: "result", score, report: report ?? null });
         return;
       }
       setSubmitError(response.status === 429 ? RATE_LIMITED_MESSAGE : GENERIC_ERROR_MESSAGE);
@@ -302,23 +310,38 @@ export function DiagnosticFlow() {
             Back
           </button>
           <button type="submit" className={buttonPrimary} disabled={!canSubmit || submitting}>
-            {submitting ? "Saving…" : "See my results"}
+            {submitting ? "Preparing your report…" : "See my results"}
           </button>
         </div>
       </form>
     );
   }
 
-  const { score } = step;
+  const { score, report } = step;
   return (
-    <section className="flex flex-col gap-6">
-      <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
-        Level {score.level}: {LEVEL_NAMES[score.level]}
-      </h2>
-      <p className="text-lg">
-        Overall score: {score.global} / 100
-      </p>
-      <ScoreBars dimensions={score.dimensions} />
-    </section>
+    <div className="flex flex-col gap-10">
+      <section className="flex flex-col gap-6">
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
+          Level {score.level}: {LEVEL_NAMES[score.level]}
+        </h2>
+        <p className="text-lg">
+          Overall score: {score.global} / 100
+        </p>
+        <ScoreBars dimensions={score.dimensions} />
+      </section>
+      {report ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-xl font-semibold">Your AI report</h2>
+          <ReportView report={report} />
+        </section>
+      ) : (
+        <p
+          role="status"
+          className="rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          {NO_REPORT_MESSAGE}
+        </p>
+      )}
+    </div>
   );
 }
