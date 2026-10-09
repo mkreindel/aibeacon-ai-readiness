@@ -4,12 +4,27 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DiagnosticFlow } from "@/components/diagnostic-flow";
 import { QUESTIONS } from "@/lib/questions";
+import type { Report } from "@/lib/report";
 import { DIMENSIONS, scoreDiagnostic, type Answers, type AnswerValue, type Dimension } from "@/lib/scoring";
 
-// Fake server: scores the posted answers like the real route does.
+const useCase = {
+  title: "Automate the weekly sales report",
+  why: "Totals are copied by hand each week.",
+  effort: "low",
+  risk: "low",
+  firstStep: "Export one week of register data.",
+} as const;
+
+const REPORT: Report = {
+  summary: "Your data is organized. Governance is the area to strengthen first.",
+  useCases: [useCase, { ...useCase, title: "Draft supplier emails" }, { ...useCase, title: "Tag tickets" }],
+  nextStep: "Write down who may use AI tools and with which data.",
+};
+
+// Fake server: scores the posted answers like the real route does and returns a report.
 const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
   const body = JSON.parse(String(init?.body));
-  return Response.json({ score: scoreDiagnostic(body.answers) }, { status: 201 });
+  return Response.json({ score: scoreDiagnostic(body.answers), report: REPORT }, { status: 201 });
 });
 
 beforeEach(() => {
@@ -221,7 +236,7 @@ describe("DiagnosticFlow submission", () => {
     await reachContact(user);
     await user.click(screen.getByRole("button", { name: "See my results" }));
 
-    const saving = screen.getByRole("button", { name: "Saving…" });
+    const saving = screen.getByRole("button", { name: "Preparing your report…" });
     expect(saving).toBeDisabled();
     await user.click(saving);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -233,8 +248,36 @@ describe("DiagnosticFlow submission", () => {
       team: [2, 2, 2],
       governance: [2, 2, 2],
     };
-    respond(Response.json({ score: scoreDiagnostic(twos) }, { status: 201 }));
+    respond(Response.json({ score: scoreDiagnostic(twos), report: REPORT }, { status: 201 }));
     expect(await screen.findByRole("heading", { name: /^Level/ })).toBeInTheDocument();
+  });
+
+  it("shows the AI report below the scores", async () => {
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    expect(await screen.findByRole("heading", { name: "Your AI report" })).toBeInTheDocument();
+    expect(screen.getByText(REPORT.summary)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Draft supplier emails" })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("shows the result with a notice when the report could not be generated", async () => {
+    fetchMock.mockImplementationOnce(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      return Response.json({ score: scoreDiagnostic(body.answers), report: null }, { status: 201 });
+    });
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    expect(await screen.findByRole("heading", { name: /^Level/ })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Score by area" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "We couldn't generate your personalized report right now. Your scores above are saved.",
+    );
+    expect(screen.queryByRole("heading", { name: "Your AI report" })).not.toBeInTheDocument();
   });
 
   it("asks the visitor to wait when the server rate-limits the submission", async () => {

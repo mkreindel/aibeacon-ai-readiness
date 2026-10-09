@@ -31,7 +31,22 @@ const fullRow = {
   },
   scores,
   level: 2,
+  report: null as unknown,
   is_demo: true,
+};
+
+const useCase = {
+  title: "Route planning from delivery spreadsheets",
+  why: "Dispatchers plan routes by hand every morning.",
+  effort: "medium",
+  risk: "low",
+  firstStep: "Export one week of delivery addresses.",
+};
+
+const report = {
+  summary: "Your data is solid. Your team is the area to strengthen first.",
+  useCases: [useCase, useCase, useCase],
+  nextStep: "Pick one dispatcher to pilot a route planning tool.",
 };
 
 function reader(overrides: Partial<DiagnosticsReader> = {}): DiagnosticsReader {
@@ -90,6 +105,30 @@ describe("getDiagnostic", () => {
       score: { dimensions: scores.dimensions, global: 51, level: 2 },
       isDemo: true,
     });
+  });
+
+  it("includes the AI report when the row has a valid one", async () => {
+    const source = reader({ getById: vi.fn(async () => ({ ...fullRow, report })) });
+    expect((await getDiagnostic(source, ID))?.report).toEqual(report);
+  });
+
+  it("has report null when the row has none", async () => {
+    expect((await getDiagnostic(reader(), ID))?.report).toBeNull();
+  });
+
+  it("treats a report that does not validate as missing, and still shows the diagnostic", async () => {
+    const broken = { ...report, useCases: [useCase] };
+    const source = reader({ getById: vi.fn(async () => ({ ...fullRow, report: broken })) });
+    const detail = await getDiagnostic(source, ID);
+    expect(detail?.report).toBeNull();
+    expect(detail?.contactName).toBe("Alex Rivera");
+  });
+
+  it("fails loudly when the report column was not selected", async () => {
+    const withoutReport: Record<string, unknown> = { ...fullRow };
+    delete withoutReport.report;
+    const source = reader({ getById: vi.fn(async () => withoutReport) });
+    await expect(getDiagnostic(source, ID)).rejects.toThrow();
   });
 
   it("returns null when no row is visible (missing, or hidden by RLS)", async () => {

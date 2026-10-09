@@ -83,11 +83,11 @@ Opciones de cada pregunta en orden de valor 0 a 3.
 15. Do you measure results of AI or automation projects? (No / Gut feeling / Some metrics / Before-and-after metrics)
 
 ## 7. Informe con IA
-- Entrada al modelo: rubro, tamaño, puntajes, nivel y respuestas. Nunca nombre ni email del contacto.
+- Entrada al modelo: rubro, tamaño, puntajes, nivel y respuestas. Nunca nombre, email ni empresa del contacto.
 - Salida estructurada validada con un esquema (zod):
-  - summary: 2 a 3 oraciones.
+  - summary: 2 a 3 oraciones (se pide en el prompt; el esquema valida hasta 600 caracteres).
   - useCases: exactamente 3, cada uno con title, why, effort (low, medium, high), risk (low, medium, high) y firstStep.
-  - nextStep: 1 oración.
+  - nextStep: 1 oración (se pide en el prompt; el esquema valida hasta 250 caracteres).
 - Criterios del prompt (del bloque de Productividad del máster):
   - comprobar primero si alcanza con automatización clásica;
   - priorizar casos internos y medibles antes que chatbots de cara al cliente;

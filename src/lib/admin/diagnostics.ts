@@ -2,6 +2,7 @@
 // user's RLS policies; they are validated before rendering so bad data fails loudly.
 
 import { z } from "zod";
+import { reportSchema, type Report } from "@/lib/report";
 import { DIMENSIONS, type Answers, type DiagnosticScore, type Dimension, type Level } from "@/lib/scoring";
 import { answersSchema } from "@/lib/submission";
 
@@ -41,6 +42,7 @@ const detailRowSchema = summaryRowSchema.extend({
   contact_name: z.string(),
   email: z.string(),
   answers: answersSchema,
+  report: z.unknown(),
 });
 
 export interface DiagnosticSummary {
@@ -59,6 +61,9 @@ export interface DiagnosticDetail extends Omit<DiagnosticSummary, "level" | "glo
   email: string;
   answers: Answers;
   score: DiagnosticScore;
+  // Null when the model failed (spec, section 7) or the stored report does not validate:
+  // the report is optional, so a bad one hides only the report, not the whole diagnostic.
+  report: Report | null;
 }
 
 function toSummary(row: z.infer<typeof summaryRowSchema>): DiagnosticSummary {
@@ -92,5 +97,6 @@ export async function getDiagnostic(reader: DiagnosticsReader, id: string): Prom
     email: parsed.email,
     answers: parsed.answers,
     score: { dimensions: parsed.scores.dimensions, global, level },
+    report: parsed.report === null ? null : (reportSchema.safeParse(parsed.report).data ?? null),
   };
 }

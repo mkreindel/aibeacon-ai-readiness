@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReportView } from "@/components/report-view";
 import { ScoreBars } from "@/components/score-bars";
 import type { DiagnosticDetail as Detail } from "@/lib/admin/diagnostics";
 import { formatDate } from "@/lib/admin/format";
@@ -40,6 +41,15 @@ export function DiagnosticDetail({ diagnostic }: { diagnostic: Detail }) {
         </h2>
         <p>Overall score: {score.global} / 100</p>
         <ScoreBars dimensions={score.dimensions} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">AI report</h2>
+        {diagnostic.report ? (
+          <ReportView report={diagnostic.report} />
+        ) : (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">No AI report for this diagnostic.</p>
+        )}
       </section>
 
       <section className="flex flex-col gap-4">
