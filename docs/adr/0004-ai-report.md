@@ -54,9 +54,19 @@ Por eso (`src/lib/report.ts`):
 ## Limitación conocida
 El insert ocurre después de la llamada al modelo (hasta 15 s). Durante ese tiempo, envíos concurrentes desde la misma IP pueden pasar el chequeo del límite antes de que exista la primera fila. Aceptado para el MVP; no se corrige ahora.
 
-## Pendiente de verificar en el preview
-- Que la llamada real con el esquema estricto devuelva un informe (OpenAI acepta el esquema).
-- El nombre de error que produce un timeout real (con el modelo simulado no se pudo reproducir).
+## Evidencia en el preview
+Prueba hecha por Marcelo el 09/10/2026 en el preview de la rama `claude/gallant-bell-mhh9e1`, redeploy del commit `0fe40c2` con `OPENAI_API_KEY` cargada solo en el entorno Preview de Vercel. La clave es de una service account de un proyecto de OpenAI dedicado, con acceso solo a `gpt-5.4-mini` y un tope de gasto de US$10 que corta.
+- Diagnóstico de prueba (Construction, 11-50, todas las respuestas en la opción 1): respuesta 201 en 5,7 s y el informe visible para el visitante.
+- Supabase: la fila guardada tiene level 1 y un `report` con 3 useCases, summary de 283 caracteres y nextStep de 129.
+- Panel: el detalle muestra el informe completo para el admin; el usuario demo sigue viendo solo las 6 filas demo.
+- Runtime Logs de Vercel (últimos 30 minutos): ninguna línea "report generation", 0 warnings y 0 errores.
+- OpenAI aceptó el esquema estricto con `minItems` y `maxItems` y sin topes de largo en los textos.
+- `supabase/seed/demo-reports.sql` (blob `68a04768`) ejecutado en Supabase con el OK de Marcelo: las 6 filas demo tienen informe y las 7 filas de prueba no se tocaron.
+
+Ajuste a partir de la prueba: el modelo escribió "no rules" cuando la respuesta era "Unwritten". Se agregó al prompt la instrucción de describir cada respuesta con el sentido exacto de la opción elegida, sin exagerarla ni suavizarla (con test en `src/lib/report-prompt.test.ts`).
+
+## Pendiente
+- El nombre de error que produce un timeout real: con el modelo simulado no se pudo reproducir y en la prueba no hubo timeouts.
 
 ## Consecuencias
 - Cada diagnóstico con informe implica una llamada a OpenAI con costo por tokens.
