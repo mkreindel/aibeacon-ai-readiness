@@ -1,11 +1,16 @@
+import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it } from "vitest";
+import type { Report } from "@/lib/report";
+import type { ReportInput } from "@/lib/report-prompt";
 import { hashIp, MISSING_IP_KEY } from "@/lib/server/client-ip";
+import { generateReport } from "@/lib/server/generate-report";
 import {
   RATE_LIMIT_MAX,
   RATE_LIMIT_WINDOW_MS,
   submitDiagnostic,
   type DiagnosticRow,
   type DiagnosticsStore,
+  type ReportGenerator,
 } from "@/lib/server/submit-diagnostic";
 
 const SALT = "test-salt";
@@ -26,7 +31,33 @@ const validBody = () => ({
   consent: true,
 });
 
-function setup({ recent = 0, failInsert = false, failCount = false } = {}) {
+const useCase = {
+  title: "Automate weekly sales report",
+  why: "Sales are copied by hand into a spreadsheet each week.",
+  effort: "low",
+  risk: "low",
+  firstStep: "List the totals your team copies by hand.",
+} as const;
+
+const REPORT: Report = {
+  summary: "Your data is in good shape. Governance is the area to strengthen first.",
+  useCases: [useCase, { ...useCase, effort: "medium" }, { ...useCase, risk: "medium" }],
+  nextStep: "Write down who may use AI tools and with which data.",
+};
+
+interface SetupOptions {
+  recent?: number;
+  failInsert?: boolean;
+  failCount?: boolean;
+  reporter?: ReportGenerator | null;
+}
+
+function setup({
+  recent = 0,
+  failInsert = false,
+  failCount = false,
+  reporter = async () => REPORT,
+}: SetupOptions = {}) {
   const inserted: DiagnosticRow[] = [];
   const countCalls: { ipHash: string; since: Date }[] = [];
   const logs: string[] = [];
@@ -52,7 +83,7 @@ function setup({ recent = 0, failInsert = false, failCount = false } = {}) {
         headers: { "content-type": "application/json", ...headers },
         body: typeof body === "string" ? body : JSON.stringify(body),
       }),
-      { store, salt: SALT, logger, now: () => NOW },
+      { store, salt: SALT, logger, now: () => NOW, generateReport: reporter },
     );
   return { inserted, countCalls, logs, send };
 }
@@ -69,7 +100,7 @@ describe("submitDiagnostic", () => {
       global: 87,
       level: 2,
     };
-    expect(await response.json()).toEqual({ score: expectedScore });
+    expect(await response.json()).toEqual({ score: expectedScore, report: REPORT });
     expect(inserted).toEqual([
       {
         company: "Acme",
@@ -80,6 +111,7 @@ describe("submitDiagnostic", () => {
         answers: validBody().answers,
         scores: { dimensions: expectedScore.dimensions, global: 87 },
         level: 2,
+        report: REPORT,
         consent: true,
         ip_hash: hashIp(IP, SALT),
       },
@@ -173,6 +205,102 @@ describe("submitDiagnostic", () => {
       expect(logs).toEqual(["error: diagnostic storage failed"]);
       expect(logs.join(" ")).not.toMatch(/jane|acme|Jane Doe/i);
     });
+  });
+});
+
+describe("submitDiagnostic AI report", () => {
+  it("gives the report generator only industry, size, score and answers", async () => {
+    const inputs: ReportInput[] = [];
+    const { send } = setup({
+      reporter: async (input) => {
+        inputs.push(input);
+        return REPORT;
+      },
+    });
+    await send(validBody());
+    expect(inputs).toHaveLength(1);
+    expect(Object.keys(inputs[0]).sort()).toEqual(["answers", "companySize", "industry", "score"]);
+  });
+
+  it("never sends the contact's name, email or company to the model", async () => {
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => ({
+        content: [{ type: "text", text: JSON.stringify(REPORT) }],
+        finishReason: { unified: "stop", raw: undefined },
+        usage: {
+          inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+          outputTokens: { total: 20, text: 20, reasoning: undefined },
+        },
+        warnings: [],
+      }),
+    });
+    const { inserted, send } = setup({ reporter: (input) => generateReport(input, model) });
+    const body = validBody();
+    body.contact = {
+      name: "zz-name-7781",
+      email: "zz-email-7781@example.com",
+      company: "zz-company-7781",
+    };
+    const response = await send(body);
+
+    expect(response.status).toBe(201);
+    expect(inserted[0].report).toEqual(REPORT);
+    const sentToModel = JSON.stringify(model.doGenerateCalls);
+    expect(sentToModel).toContain("Industry: Retail");
+    expect(sentToModel).not.toContain("7781");
+  });
+
+  it.each([
+    ["the generator throws", async () => Promise.reject(new Error("timeout for jane@example.com"))],
+    ["the output does not validate", async () => ({ ...REPORT, useCases: [] }) as unknown as Report],
+  ])("saves the diagnostic with report null when %s", async (_, reporter) => {
+    const { inserted, logs, send } = setup({ reporter });
+    const response = await send(validBody());
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.report).toBeNull();
+    expect(body.score.level).toBe(2);
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0].report).toBeNull();
+    expect(inserted[0].level).toBe(2);
+    expect(logs).toEqual(["warn: report generation failed"]);
+    expect(logs.join(" ")).not.toMatch(/jane|acme/i);
+  });
+
+  it("saves the diagnostic with report null when no generator is configured", async () => {
+    const { inserted, logs, send } = setup({ reporter: null });
+    const response = await send(validBody());
+
+    expect(response.status).toBe(201);
+    expect((await response.json()).report).toBeNull();
+    expect(inserted[0].report).toBeNull();
+    expect(logs).toEqual(["warn: report generation disabled"]);
+  });
+
+  it("does not call the model when the submission is rate-limited", async () => {
+    let calls = 0;
+    const { send } = setup({
+      recent: RATE_LIMIT_MAX,
+      reporter: async () => {
+        calls += 1;
+        return REPORT;
+      },
+    });
+    expect((await send(validBody())).status).toBe(429);
+    expect(calls).toBe(0);
+  });
+
+  it("does not call the model when the submission is invalid", async () => {
+    let calls = 0;
+    const { send } = setup({
+      reporter: async () => {
+        calls += 1;
+        return REPORT;
+      },
+    });
+    expect((await send({ ...validBody(), consent: false })).status).toBe(400);
+    expect(calls).toBe(0);
   });
 });
 
