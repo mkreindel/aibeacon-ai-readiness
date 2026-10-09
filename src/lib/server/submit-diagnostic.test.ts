@@ -250,10 +250,24 @@ describe("submitDiagnostic AI report", () => {
     expect(sentToModel).not.toContain("7781");
   });
 
+  function namedError(name: string, message: string) {
+    const error = new Error(message);
+    error.name = name;
+    return error;
+  }
+
   it.each([
-    ["the generator throws", async () => Promise.reject(new Error("timeout for jane@example.com"))],
-    ["the output does not validate", async () => ({ ...REPORT, useCases: [] }) as unknown as Report],
-  ])("saves the diagnostic with report null when %s", async (_, reporter) => {
+    [
+      "the generator throws",
+      async () => Promise.reject(namedError("AI_APICallError", "provider down for jane@example.com")),
+      "AI_APICallError",
+    ],
+    [
+      "the output does not validate",
+      async () => ({ ...REPORT, useCases: [] }) as unknown as Report,
+      "ZodError",
+    ],
+  ])("saves the diagnostic with report null when %s", async (_, reporter, errorName) => {
     const { inserted, logs, send } = setup({ reporter });
     const response = await send(validBody());
 
@@ -264,8 +278,33 @@ describe("submitDiagnostic AI report", () => {
     expect(inserted).toHaveLength(1);
     expect(inserted[0].report).toBeNull();
     expect(inserted[0].level).toBe(2);
-    expect(logs).toEqual(["warn: report generation failed"]);
+    expect(logs).toEqual([`warn: report generation failed: ${errorName}`]);
     expect(logs.join(" ")).not.toMatch(/jane|acme/i);
+  });
+
+  it("logs only the error name, never its message or the model's text", async () => {
+    const error = Object.assign(
+      namedError("AI_NoObjectGeneratedError", "No object generated: zz-model-text-4410"),
+      { text: "zz-model-text-4410 Jane Doe" },
+    );
+    const { logs, send } = setup({ reporter: async () => Promise.reject(error) });
+    await send(validBody());
+
+    expect(logs).toEqual(["warn: report generation failed: AI_NoObjectGeneratedError"]);
+    expect(logs.join(" ")).not.toContain("4410");
+    expect(logs.join(" ")).not.toMatch(/jane|acme/i);
+  });
+
+  it.each([
+    ["a plain Error", new Error("timeout for jane@example.com")],
+    ["a thrown string", "jane@example.com"],
+    ["an error whose name carries data", namedError("jane@example.com", "x")],
+    ["an error with an empty name", namedError("", "x")],
+  ])("logs unknown for %s", async (_, thrown) => {
+    const { logs, send } = setup({ reporter: async () => Promise.reject(thrown) });
+    await send(validBody());
+
+    expect(logs).toEqual(["warn: report generation failed: unknown"]);
   });
 
   it("saves the diagnostic with report null when no generator is configured", async () => {

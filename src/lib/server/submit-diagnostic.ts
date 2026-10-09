@@ -48,6 +48,16 @@ export interface SubmitDependencies {
   generateReport: ReportGenerator | null;
 }
 
+// Only the error's class name is logged (for example AI_NoObjectGeneratedError), never its
+// message or the model's text. Names that are generic or not identifier-like log as "unknown".
+const ERROR_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+export function errorName(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown";
+  const { name } = error;
+  return name !== "Error" && ERROR_NAME_PATTERN.test(name) ? name : "unknown";
+}
+
 // The report is optional: any failure leaves it null and the diagnostic is saved anyway.
 async function tryReport(
   input: ReportInput,
@@ -58,13 +68,15 @@ async function tryReport(
     logger.warn("report generation disabled");
     return null;
   }
+  let failure: string;
   try {
     const parsed = reportSchema.safeParse(await generate(input));
     if (parsed.success) return parsed.data;
-  } catch {
-    // Fall through: the error may include provider details, so it is not logged.
+    failure = errorName(parsed.error);
+  } catch (error) {
+    failure = errorName(error);
   }
-  logger.warn("report generation failed");
+  logger.warn(`report generation failed: ${failure}`);
   return null;
 }
 
