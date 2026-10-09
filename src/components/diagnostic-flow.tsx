@@ -2,19 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { COMPANY_SIZES, INDUSTRIES, type CompanySize, type Industry } from "@/lib/company";
+import { ScoreBars } from "@/components/score-bars";
 import { DIMENSION_LABELS, QUESTIONS } from "@/lib/questions";
 import {
   DIMENSIONS,
   LEVEL_NAMES,
-  scoreDiagnostic,
   type AnswerValue,
   type Answers,
   type DiagnosticScore,
   type Dimension,
 } from "@/lib/scoring";
 
-// Visitor flow from docs/spec.md, section 4. Nothing is persisted yet:
-// contact data stays in memory and the score is computed in the browser.
+// Visitor flow from docs/spec.md, section 4. The contact step posts to /api/diagnostics,
+// which validates, scores and saves the diagnostic; the result shows the server's score.
 
 type Step =
   | { kind: "company" }
@@ -25,6 +25,10 @@ type Step =
 type PartialAnswers = Record<Dimension, (AnswerValue | null)[]>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const RATE_LIMITED_MESSAGE =
+  "You've sent several diagnostics in a short time. Please wait a while and try again.";
+const GENERIC_ERROR_MESSAGE = "We couldn't save your diagnostic. Please try again.";
 
 const emptyAnswers = (): PartialAnswers =>
   Object.fromEntries(DIMENSIONS.map((dimension) => [dimension, [null, null, null]])) as PartialAnswers;
@@ -59,6 +63,8 @@ export function DiagnosticFlow() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Move focus to the new screen's heading so keyboard and screen reader users follow along.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -70,6 +76,34 @@ export function DiagnosticFlow() {
     }
     headingRef.current?.focus();
   }, [step]);
+
+  async function submit() {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const response = await fetch("/api/diagnostics", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          industry,
+          companySize: size,
+          answers: toAnswers(answers),
+          contact: { name: name.trim(), email: email.trim(), company: company.trim() },
+          consent,
+        }),
+      });
+      if (response.status === 201) {
+        const { score } = (await response.json()) as { score: DiagnosticScore };
+        setStep({ kind: "result", score });
+        return;
+      }
+      setSubmitError(response.status === 429 ? RATE_LIMITED_MESSAGE : GENERIC_ERROR_MESSAGE);
+    } catch {
+      setSubmitError(GENERIC_ERROR_MESSAGE);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   function setAnswer(dimension: Dimension, questionIndex: number, value: AnswerValue) {
     setAnswers((current) => ({
@@ -214,7 +248,7 @@ export function DiagnosticFlow() {
         className="flex flex-col gap-6"
         onSubmit={(event) => {
           event.preventDefault();
-          if (canSubmit) setStep({ kind: "result", score: scoreDiagnostic(toAnswers(answers)) });
+          if (canSubmit && !submitting) void submit();
         }}
       >
         <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
@@ -253,16 +287,22 @@ export function DiagnosticFlow() {
             this diagnostic.
           </span>
         </label>
+        {submitError && (
+          <p role="alert" className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            {submitError}
+          </p>
+        )}
         <div className="flex gap-3">
           <button
             type="button"
             className={buttonSecondary}
+            disabled={submitting}
             onClick={() => setStep({ kind: "questions", index: DIMENSIONS.length - 1 })}
           >
             Back
           </button>
-          <button type="submit" className={buttonPrimary} disabled={!canSubmit}>
-            See my results
+          <button type="submit" className={buttonPrimary} disabled={!canSubmit || submitting}>
+            {submitting ? "Saving…" : "See my results"}
           </button>
         </div>
       </form>
@@ -278,22 +318,7 @@ export function DiagnosticFlow() {
       <p className="text-lg">
         Overall score: {score.global} / 100
       </p>
-      <ul aria-label="Score by area" className="flex flex-col gap-3">
-        {DIMENSIONS.map((dimension) => (
-          <li key={dimension} className="flex flex-col gap-1">
-            <div className="flex justify-between text-sm">
-              <span>{DIMENSION_LABELS[dimension]}</span>
-              <span>{score.dimensions[dimension]}</span>
-            </div>
-            <div aria-hidden="true" className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-800">
-              <div
-                className="h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
-                style={{ width: `${score.dimensions[dimension]}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ScoreBars dimensions={score.dimensions} />
     </section>
   );
 }

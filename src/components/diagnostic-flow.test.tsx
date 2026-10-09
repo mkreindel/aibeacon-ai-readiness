@@ -1,10 +1,25 @@
 // @vitest-environment jsdom
 import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DiagnosticFlow } from "@/components/diagnostic-flow";
 import { QUESTIONS } from "@/lib/questions";
-import { DIMENSIONS, type AnswerValue, type Dimension } from "@/lib/scoring";
+import { DIMENSIONS, scoreDiagnostic, type Answers, type AnswerValue, type Dimension } from "@/lib/scoring";
+
+// Fake server: scores the posted answers like the real route does.
+const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+  const body = JSON.parse(String(init?.body));
+  return Response.json({ score: scoreDiagnostic(body.answers) }, { status: 201 });
+});
+
+beforeEach(() => {
+  fetchMock.mockClear();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function setup() {
   const user = userEvent.setup();
@@ -124,7 +139,7 @@ describe("DiagnosticFlow", () => {
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: "See my results" }));
 
-    expect(screen.getByRole("heading", { name: "Level 3: Governed AI" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Level 3: Governed AI" })).toBeInTheDocument();
     expect(screen.getByText("Overall score: 100 / 100")).toBeInTheDocument();
     const scores = screen.getByRole("list", { name: "Score by area" });
     expect(within(scores).getAllByRole("listitem")).toHaveLength(5);
@@ -144,7 +159,115 @@ describe("DiagnosticFlow", () => {
     await user.click(screen.getByRole("button", { name: "See my results" }));
 
     // (100 * 4 + 0) / 5 = 80, but governance 0 keeps it at level 2
-    expect(screen.getByText("Overall score: 80 / 100")).toBeInTheDocument();
+    expect(await screen.findByText("Overall score: 80 / 100")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Level 2: Team methodology" })).toBeInTheDocument();
+  });
+});
+
+describe("DiagnosticFlow submission", () => {
+  async function reachContact(user: UserEvent) {
+    await fillCompany(user);
+    await answerAll(user, 2);
+    await fillContact(user);
+    await user.click(screen.getByRole("checkbox"));
+  }
+
+  it("posts the visitor's data to /api/diagnostics", async () => {
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+    await screen.findByRole("heading", { name: /^Level/ });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/diagnostics");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      industry: "Retail",
+      companySize: "11-50",
+      answers: Object.fromEntries(DIMENSIONS.map((dimension) => [dimension, [2, 2, 2]])),
+      contact: { name: "Jane Doe", email: "jane@example.com", company: "Acme" },
+      consent: true,
+    });
+  });
+
+  it("shows the score returned by the server", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      Response.json(
+        {
+          score: {
+            dimensions: { data: 11, processes: 22, tools: 33, team: 44, governance: 56 },
+            global: 33,
+            level: 1,
+          },
+        },
+        { status: 201 },
+      ),
+    );
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    expect(await screen.findByRole("heading", { name: "Level 1: Individual use" })).toBeInTheDocument();
+    expect(screen.getByText("Overall score: 33 / 100")).toBeInTheDocument();
+  });
+
+  it("shows a saving state and cannot be submitted twice", async () => {
+    let respond: (response: Response) => void = () => {};
+    fetchMock.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => (respond = resolve)),
+    );
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    const saving = screen.getByRole("button", { name: "Saving…" });
+    expect(saving).toBeDisabled();
+    await user.click(saving);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const twos: Answers = {
+      data: [2, 2, 2],
+      processes: [2, 2, 2],
+      tools: [2, 2, 2],
+      team: [2, 2, 2],
+      governance: [2, 2, 2],
+    };
+    respond(Response.json({ score: scoreDiagnostic(twos) }, { status: 201 }));
+    expect(await screen.findByRole("heading", { name: /^Level/ })).toBeInTheDocument();
+  });
+
+  it("asks the visitor to wait when the server rate-limits the submission", async () => {
+    fetchMock.mockImplementationOnce(async () =>
+      Response.json({ error: "Too many submissions." }, { status: 429 }),
+    );
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "You've sent several diagnostics in a short time. Please wait a while and try again.",
+    );
+    expect(screen.getByLabelText("Your name")).toHaveValue("Jane Doe");
+    expect(screen.getByRole("button", { name: "See my results" })).toBeEnabled();
+  });
+
+  it.each([
+    ["a server error", async () => Response.json({ error: "x" }, { status: 500 })],
+    ["a validation error", async () => Response.json({ error: "x" }, { status: 400 })],
+    ["a network failure", async () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])("shows a generic error for %s and lets the visitor retry", async (_, failure) => {
+    fetchMock.mockImplementationOnce(failure as () => Promise<Response>);
+    const user = setup();
+    await reachContact(user);
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("We couldn't save your diagnostic. Please try again.");
+    expect(alert).not.toHaveTextContent(/wait a while/);
+
+    await user.click(screen.getByRole("button", { name: "See my results" }));
+    expect(await screen.findByRole("heading", { name: /^Level/ })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

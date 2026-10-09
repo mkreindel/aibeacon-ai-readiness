@@ -110,18 +110,33 @@ Tabla `diagnostics`:
 | level | int |
 | report | jsonb, puede ser null |
 | consent | boolean, debe ser true |
+| ip_hash | text, hash SHA-256 de la IP con sal secreta; null en datos de demo |
+| is_demo | boolean, true solo en datos de demo |
+
+Tabla `panel_users` (lista de usuarios habilitados en el panel):
+
+| Columna | Tipo |
+|---|---|
+| user_id | uuid, referencia a `auth.users` |
+| role | text: `admin` o `demo` |
+| created_at | timestamptz |
 
 Acceso:
-- RLS activado.
-- El visitante no accede a la tabla: los datos los guarda una ruta del servidor.
-- Solo usuarios autenticados del panel pueden leer.
+- RLS activado en las dos tablas.
+- El visitante no accede a ninguna tabla: los datos los guarda una ruta del servidor con la clave secreta.
+- Lectura de `diagnostics` solo para usuarios de `panel_users`: `admin` lee todo; `demo` lee solo filas con `is_demo = true`.
+- Nadie modifica ni borra desde el panel: no hay políticas de escritura.
+- Estar autenticado no alcanza: un usuario fuera de `panel_users` no lee nada.
+- Esquema versionado en `supabase/migrations/`.
 
 ## 9. Seguridad y privacidad
 - Claves solo en variables de entorno; `.env.example` sin valores.
 - Validación del lado del servidor de todo lo que llega del formulario.
-- Límite básico de envíos por IP.
+- Límite de 5 envíos por IP por hora. La IP no se guarda en claro: se guarda su hash con sal secreta (`ip_hash`).
+- El servidor recalcula puntaje y nivel; nunca guarda un puntaje enviado por el navegador.
 - Ningún dato personal en el prompt ni en los logs.
-- Usuario de demo con permisos de solo lectura.
+- Usuario de demo con permisos de solo lectura, que ve solo datos de demo. Su contraseña se publica en el README.
+- Datos de demo claramente ficticios: empresas inventadas y emails con dominio `example.com`.
 
 ## 10. Criterios de aceptación
 1. Un visitante completa el diagnóstico en menos de 5 minutos y ve su nivel e informe.

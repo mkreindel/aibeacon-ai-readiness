@@ -1,0 +1,89 @@
+// Applies the migrations and the demo seed to an in-memory Postgres (PGlite) and checks
+// that the seed is idempotent, clearly fictional, visible to the demo user and that its
+// stored scores match scoreDiagnostic.
+import { readdirSync, readFileSync } from "node:fs";
+import { PGlite } from "@electric-sql/pglite";
+import { beforeAll, describe, expect, it } from "vitest";
+import { scoreDiagnostic, type Answers } from "@/lib/scoring";
+
+const MIGRATIONS_DIR = new URL("../migrations/", import.meta.url);
+const SEED = readFileSync(new URL("../seed/demo-data.sql", import.meta.url), "utf8");
+const DEMO = "00000000-0000-0000-0000-00000000000d";
+
+let db: PGlite;
+
+interface SeedRow {
+  id: string;
+  email: string;
+  answers: Answers;
+  scores: { dimensions: Record<string, number>; global: number };
+  level: number;
+  is_demo: boolean;
+  ip_hash: string | null;
+}
+
+beforeAll(async () => {
+  db = new PGlite();
+  await db.exec(`
+    create role anon nologin;
+    create role authenticated nologin;
+    create role service_role nologin bypassrls;
+    create schema auth;
+    create table auth.users (id uuid primary key);
+    create function auth.uid() returns uuid language sql stable as
+      $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    grant usage on schema auth to anon, authenticated, service_role;
+    grant execute on function auth.uid() to anon, authenticated, service_role;
+    grant usage on schema public to anon, authenticated, service_role;
+    alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  `);
+  for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort()) {
+    await db.exec(readFileSync(new URL(file, MIGRATIONS_DIR), "utf8"));
+  }
+  await db.exec(`
+    insert into auth.users values ('${DEMO}');
+    insert into public.panel_users (user_id, role) values ('${DEMO}', 'demo');
+  `);
+  await db.exec(SEED);
+}, 30_000);
+
+const rows = async () =>
+  (await db.query<SeedRow>("select * from public.diagnostics order by created_at")).rows;
+
+describe("demo seed", () => {
+  it("inserts 6 rows and is idempotent", async () => {
+    expect(await rows()).toHaveLength(6);
+    await db.exec(SEED);
+    expect(await rows()).toHaveLength(6);
+  });
+
+  it("is clearly fictional demo data", async () => {
+    for (const row of await rows()) {
+      expect(row.is_demo).toBe(true);
+      expect(row.email).toMatch(/@example\.com$/);
+      expect(row.ip_hash).toBeNull();
+    }
+  });
+
+  it("stores the scores and level that scoreDiagnostic computes", async () => {
+    for (const row of await rows()) {
+      const score = scoreDiagnostic(row.answers);
+      expect(row.scores).toEqual({ dimensions: score.dimensions, global: score.global });
+      expect(row.level).toBe(score.level);
+    }
+  });
+
+  it("covers every level", async () => {
+    expect(new Set((await rows()).map((row) => row.level))).toEqual(new Set([1, 2, 3]));
+  });
+
+  it("is visible to the demo user under RLS", async () => {
+    await db.exec(`select set_config('request.jwt.claim.sub', '${DEMO}', false); set role authenticated;`);
+    try {
+      const result = await db.query("select id from public.diagnostics");
+      expect(result.rows).toHaveLength(6);
+    } finally {
+      await db.exec("reset role;");
+    }
+  });
+});
