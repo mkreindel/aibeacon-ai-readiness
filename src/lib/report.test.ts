@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { REPORT_LIMITS, reportSchema } from "@/lib/report";
+import { z } from "zod";
+import { REPORT_LIMITS, reportModelSchema, reportSchema } from "@/lib/report";
 
 const useCase = {
   title: "Automate invoice data entry",
@@ -61,5 +62,28 @@ describe("reportSchema", () => {
     const withoutNextStep: Partial<typeof valid> = { ...valid };
     delete withoutNextStep.nextStep;
     expect(reportSchema.safeParse(withoutNextStep).success).toBe(false);
+  });
+});
+
+describe("reportModelSchema (sent to the model)", () => {
+  it("accepts a valid report", () => {
+    expect(reportModelSchema.parse(valid)).toEqual(valid);
+  });
+
+  it("has no string length limits, which OpenAI strict mode does not support", () => {
+    const jsonSchema = JSON.stringify(z.toJSONSchema(reportModelSchema));
+    expect(jsonSchema).not.toContain("maxLength");
+    expect(jsonSchema).not.toContain("minLength");
+    expect(reportModelSchema.safeParse({ ...valid, summary: "a".repeat(601) }).success).toBe(true);
+  });
+
+  it("still requires exactly 3 use cases, closed ratings and no extra fields", () => {
+    const jsonSchema = JSON.stringify(z.toJSONSchema(reportModelSchema));
+    expect(jsonSchema).toContain('"minItems":3');
+    expect(jsonSchema).toContain('"maxItems":3');
+    expect(reportModelSchema.safeParse({ ...valid, useCases: [useCase, useCase] }).success).toBe(false);
+    const badRating = [{ ...useCase, risk: "none" }, useCase, useCase];
+    expect(reportModelSchema.safeParse({ ...valid, useCases: badRating }).success).toBe(false);
+    expect(reportModelSchema.safeParse({ ...valid, level: 3 }).success).toBe(false);
   });
 });
