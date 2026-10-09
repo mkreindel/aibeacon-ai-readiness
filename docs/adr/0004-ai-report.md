@@ -65,6 +65,8 @@ Prueba hecha por Marcelo el 09/10/2026 en el preview de la rama `claude/gallant-
 
 Ajuste a partir de la prueba: el modelo escribió "no rules" cuando la respuesta era "Unwritten". Se agregó al prompt la instrucción de describir cada respuesta con el sentido exacto de la opción elegida, sin exagerarla ni suavizarla (con test en `src/lib/report-prompt.test.ts`).
 
+- Prueba del prompt ajustado (Marcelo, 09/10/2026, preview de `7bd4867` con `OPENAI_API_KEY`): diagnóstico de prueba con las mismas respuestas que el primero (Construction, 11-50, todas en la opción 1), 201 en 5,0 s con informe completo; todo lo que afirma coincide con las respuestas y no apareció "no rules", pero el modelo no mencionó gobernanza, así que la regla nueva no quedó ejercitada en ese punto (queda cubierta solo por el test que verifica que la instrucción está en el prompt); la fila de esta prueba no se verificó en Supabase.
+
 ## Pendiente
 - El nombre de error que produce un timeout real: con el modelo simulado no se pudo reproducir y en la prueba no hubo timeouts.
 
