@@ -78,6 +78,12 @@ describe("REPORT_SYSTEM_PROMPT", () => {
     expect(REPORT_SYSTEM_PROMPT).toMatch(/cost of an error/i);
   });
 
+  it("asks to describe each answer with the exact meaning of the chosen option", () => {
+    expect(REPORT_SYSTEM_PROMPT).toMatch(/exact meaning of the option/i);
+    expect(REPORT_SYSTEM_PROMPT).toMatch(/do not exaggerate or soften/i);
+    expect(REPORT_SYSTEM_PROMPT).toMatch(/"Unwritten" means rules exist but are not written down, not that there are no rules/);
+  });
+
   it("forbids changing the score or level", () => {
     expect(REPORT_SYSTEM_PROMPT).toMatch(/do not change, recalculate or contradict/i);
   });
