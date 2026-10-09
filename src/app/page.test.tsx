@@ -13,3 +13,11 @@ it("is a landing, not a login, and links to the diagnostic", () => {
   );
   expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
 });
+
+it("lists the AI report without overpromising", () => {
+  render(<Home />);
+  const items = screen.getAllByRole("listitem").map((item) => item.textContent);
+  expect(items).toContain(
+    "A short summary and 3 suggested use cases written by AI. If the AI service is unavailable, you still get your level and scores.",
+  );
+});

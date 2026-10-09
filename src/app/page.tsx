@@ -19,6 +19,10 @@ export default function Home() {
         <ul className="list-disc pl-5 text-zinc-700 dark:text-zinc-300">
           <li>Your AI maturity level, from 1 to 3</li>
           <li>A score for each area: {DIMENSIONS.map((d) => DIMENSION_LABELS[d]).join(", ")}</li>
+          <li>
+            A short summary and 3 suggested use cases written by AI. If the AI service is
+            unavailable, you still get your level and scores.
+          </li>
         </ul>
       </div>
 
