@@ -21,6 +21,9 @@ Con Cache Components activo, Next.js envía primero un esqueleto estático y eso
 
 Con Cache Components activo, además, `next build` falla si una página lee cookies fuera de `<Suspense>` sin `instant = false`.
 
+## Verificación en Vercel
+En la prueba de punta a punta del 09/10/2026 en el preview de Vercel (commit `e18973e`), Marcelo abrió con la sesión del usuario demo la URL de un diagnóstico real, que RLS le oculta. Los Runtime Logs de Vercel registran ese `GET /admin/03161705-482d-49a2-a586-eb4ffbdad8fb` con estado 404 real, no un 200 con la página de no encontrado.
+
 ## Decisión
 - `cacheComponents: false` y `partialPrefetching: false` (este último requiere el primero).
 - Sin `loading.tsx` en las páginas del panel, para que `notFound()` corra antes de enviar la respuesta.

@@ -22,9 +22,16 @@ Prueba de punta a punta del 09/10/2026, hecha por Marcelo en el preview de la ra
 - Cinco envíos seguidos desde el mismo navegador respondieron 201; el sexto respondió 429 con el mensaje "You've sent several diagnostics in a short time. Please wait a while and try again."
 - En Supabase, las cinco filas de la ráfaga (09/10/2026, de 01:31:42 a 01:33:09 UTC) tienen el mismo `ip_hash`, de 64 caracteres. El envío rechazado no se guardó.
 
-Lo que esto demuestra: en Vercel, sin otro proxy delante, el código obtiene una IP estable para un mismo visitante, y el límite corta en el sexto envío como pide la spec.
+Lo que esto demuestra: el límite corta en el sexto envío como pide la spec.
 
-Lo que no se verificó: los logs de Vercel no se revisaron para confirmar que no aparezca "missing client IP header". La prueba no distingue por sí sola entre "llegó la IP real" y "todos los envíos cayeron en la clave fija `unknown`"; ambos casos producirían un mismo `ip_hash`. Revisar esos logs en el primer despliegue de producción despeja la duda.
+La prueba del 429, sola, no distingue entre "llegó la IP real" y "todos los envíos cayeron en la clave fija `unknown`": los dos casos producen un mismo `ip_hash`. Para descartar el segundo caso, Marcelo revisó el 09/10/2026 dos evidencias independientes:
+
+- **Runtime Logs de Vercel** (ventana que incluye la ráfaga; el plan Hobby retiene 1 hora): los 5 `POST /api/diagnostics` figuran con 201 y el sexto con 429. La búsqueda "missing client IP" devolvió "No request logs found for the selected filters", y la columna Messages está vacía en todos los requests de la ráfaga.
+- **Datos en Supabase:** la fila del 08/10/2026 17:02:05 UTC tiene un `ip_hash` con prefijo `573b68d6`, y las 5 filas de la ráfaga tienen el prefijo `1ed264a5`. Las dos tandas salieron del mismo deploy (`e18973e`), con la misma sal. Si no hubiera llegado la IP, las dos serían el hash de `unknown` y coincidirían; no coinciden.
+
+Conclusión: en esta prueba la IP del cliente llegó en `x-forwarded-for`; el límite no estaba usando la clave fija `unknown`.
+
+Alcance de lo medido: vale para Vercel sin otro proxy ni CDN delante, que es como corre hoy la app.
 
 ## Decisión
 - Mantener `x-forwarded-for` (primer valor) como fuente de la IP mientras la app corra en Vercel sin proxy ni CDN propio delante.
@@ -32,4 +39,4 @@ Lo que no se verificó: los logs de Vercel no se revisaron para confirmar que no
 
 ## Consecuencias
 - Si se agrega un proxy o CDN delante de Vercel, `x-forwarded-for` dejaría de traer la IP del visitante; habría que revisar esta decisión.
-- Pendiente: revisar los logs de Vercel en producción buscando "missing client IP header". Si aparece, todos los visitantes compartirían un único límite y habría que corregir la obtención de la IP.
+- Si en algún momento aparece "missing client IP header" en los logs, todos esos visitantes compartirían un único límite y habría que revisar la obtención de la IP.
