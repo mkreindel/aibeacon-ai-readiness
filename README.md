@@ -1,148 +1,148 @@
 # AI Readiness Diagnostic (AI Beacon)
 
-Final project (TFM) for the Máster en Desarrollo con IA E.2 (BIG school).
+Trabajo Final del Máster en Desarrollo con IA E.2 (BIG school).
 
-## 1. Overview
+## 1. Descripción general
 
-AI Readiness Diagnostic is a web questionnaire for owners and managers of small and mid-sized businesses (1 to 200 employees) in Houston. Many of them do not know where to start with AI or what to automate first.
+AI Readiness Diagnostic es un cuestionario web para dueños y gerentes de pequeñas y medianas empresas (de 1 a 200 empleados) en Houston. Muchos no saben por dónde empezar con la IA ni qué automatizar primero.
 
-In about 5 minutes and without signing up, a visitor answers 15 questions across five areas (Data, Processes, Tools, Team and Governance). The app shows a maturity level from 1 to 3, a score per area and a short AI-written report with 3 suggested use cases. Each completed diagnostic is saved as a lead that AI Beacon consultants review in a private admin panel.
+En unos 5 minutos y sin registrarse, el visitante responde 15 preguntas sobre cinco áreas (Data, Processes, Tools, Team y Governance). La app muestra un nivel de madurez de 1 a 3, un puntaje por área y un informe breve escrito por IA con 3 casos de uso sugeridos. Cada diagnóstico completo se guarda como un lead que los consultores de AI Beacon revisan en un panel de administración privado.
 
-The full MVP specification is in [docs/spec.md](docs/spec.md).
+La especificación completa del MVP está en [docs/spec.md](docs/spec.md).
 
-## 2. Tech stack
+## 2. Stack tecnológico
 
-Versions are the ones pinned in `package.json` and installed by `package-lock.json`.
+Las versiones son las fijadas en `package.json` e instaladas por `package-lock.json`.
 
-| Area | Technology |
+| Área | Tecnología |
 |---|---|
 | Framework | Next.js 16.4.0 (App Router), React 19.3.0, TypeScript 5.9 |
-| Styling | Tailwind CSS 4 |
-| Validation | zod 4.6 |
-| Database and auth | Supabase (Postgres with Row Level Security, email and password auth) through `@supabase/supabase-js` 2.117 and `@supabase/ssr` 0.12 |
-| AI report | OpenAI `gpt-5.4-mini` through the Vercel AI SDK (`ai` 7.0.116, `@ai-sdk/openai` 4.0.77) |
-| Tests | Vitest 5, Testing Library, jsdom, PGlite (in-memory Postgres for migration, RLS and seed tests) |
-| Linting | ESLint 9 with `eslint-config-next` |
+| Estilos | Tailwind CSS 4 |
+| Validación | zod 4.6 |
+| Base de datos y autenticación | Supabase (Postgres con Row Level Security, autenticación con email y contraseña) mediante `@supabase/supabase-js` 2.117 y `@supabase/ssr` 0.12 |
+| Informe con IA | OpenAI `gpt-5.4-mini` mediante el Vercel AI SDK (`ai` 7.0.116, `@ai-sdk/openai` 4.0.77) |
+| Tests | Vitest 5, Testing Library, jsdom, PGlite (Postgres en memoria para los tests de migración, RLS y seed) |
+| Linting | ESLint 9 con `eslint-config-next` |
 | Hosting | Vercel |
-| CI | GitHub Actions: lint, typecheck, tests, build and `npm audit --omit=dev` |
+| CI | GitHub Actions: lint, typecheck, tests, build y `npm audit --omit=dev` |
 
-## 3. Local setup
+## 3. Instalación y ejecución local
 
-### Requirements
+### Requisitos
 
-- Node.js `^22.13.0` (see `engines` in `package.json`; `.nvmrc` pins major version 22).
-- A Supabase project.
-- An OpenAI API key (optional: without it, diagnostics are saved without the AI report).
+- Node.js `^22.13.0` (ver `engines` en `package.json`; `.nvmrc` fija la versión mayor 22).
+- Un proyecto de Supabase.
+- Una API key de OpenAI (opcional: sin ella, los diagnósticos se guardan sin el informe con IA).
 
-### Install
+### Instalación
 
 ```bash
 npm install
 cp .env.example .env.local
 ```
 
-### Environment variables
+### Variables de entorno
 
-Fill in `.env.local`. Never commit real values.
+Completar `.env.local`. Nunca commitear valores reales.
 
-| Variable | What it is |
+| Variable | Qué es |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. Public by design. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`). Public by design; RLS protects the data. |
-| `SUPABASE_SECRET_KEY` | Supabase secret key (`sb_secret_...`). Server only: it bypasses RLS and is used only to save diagnostics. |
-| `IP_HASH_SALT` | Random secret used to hash visitor IPs for the rate limit. Generate one with `openssl rand -hex 32`. |
-| `OPENAI_API_KEY` | OpenAI API key for the AI report. Server only. Without it, the report is skipped. |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase. Pública por diseño. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave publishable de Supabase (`sb_publishable_...`). Pública por diseño; RLS protege los datos. |
+| `SUPABASE_SECRET_KEY` | Clave secreta de Supabase (`sb_secret_...`). Solo servidor: saltea RLS y se usa únicamente para guardar diagnósticos. |
+| `IP_HASH_SALT` | Secreto aleatorio para hashear la IP de los visitantes en el límite de envíos. Se genera con `openssl rand -hex 32`. |
+| `OPENAI_API_KEY` | API key de OpenAI para el informe con IA. Solo servidor. Sin ella, el informe se omite. |
 
-### Database
+### Base de datos
 
-The repository has no Supabase CLI configuration; run the SQL files in the Supabase SQL Editor, in this order:
+El repositorio no tiene configuración de Supabase CLI; los archivos SQL se ejecutan en el SQL Editor de Supabase, en este orden:
 
-1. `supabase/migrations/20261008140000_diagnostics.sql`: tables, constraints, indexes and RLS policies.
-2. In Supabase Auth, create the panel users (email and password) and disable public sign-ups.
-3. Give each panel user a role (`admin` or `demo`):
+1. `supabase/migrations/20261008140000_diagnostics.sql`: tablas, restricciones, índices y políticas RLS.
+2. En Supabase Auth, crear los usuarios del panel (email y contraseña) y desactivar el registro público.
+3. Asignar un rol a cada usuario del panel (`admin` o `demo`):
    ```sql
    insert into public.panel_users (user_id, role) values ('<auth user id>', 'admin');
    ```
-4. `supabase/seed/demo-data.sql`: 6 fictional demo diagnostics.
-5. `supabase/seed/demo-reports.sql`: fictional AI reports for those 6 rows.
+4. `supabase/seed/demo-data.sql`: 6 diagnósticos de demo ficticios.
+5. `supabase/seed/demo-reports.sql`: informes con IA ficticios para esas 6 filas.
 
-Both seed files are idempotent: running them again changes nothing.
+Los dos archivos de seed son idempotentes: ejecutarlos de nuevo no cambia nada.
 
-### Run
+### Ejecución
 
 ```bash
-npm run dev        # development server
-npm test           # all tests (no Supabase or OpenAI needed)
+npm run dev        # servidor de desarrollo
+npm test           # todos los tests (no requieren Supabase ni OpenAI)
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-Tests never call OpenAI (the model is mocked) and test the SQL against an in-memory Postgres (PGlite), so they run without any external service.
+Los tests nunca llaman a OpenAI (el modelo está simulado) y prueban el SQL contra un Postgres en memoria (PGlite), así que corren sin ningún servicio externo.
 
-## 4. Project structure
+## 4. Estructura del proyecto
 
 ```
 src/
-  app/                  Pages and the API route (App Router)
+  app/                  Páginas y la ruta de API (App Router)
     page.tsx            Landing
-    diagnostic/         Public questionnaire
-    api/diagnostics/    POST route: validate, rate-limit, score, AI report, save
-    admin/              Admin panel: login, diagnostics list and detail
-  components/           Questionnaire flow, score bars, AI report view, admin views
-  lib/                  Scoring, questions, validation schemas, AI report prompt and schema
-    server/             Server-only code: IP hashing, submission flow, Supabase and OpenAI clients
-    admin/              Admin panel data access and session helpers
-    supabase/           Supabase clients for server code and the proxy
-  proxy.ts              Keeps the admin session fresh and redirects /admin paths
+    diagnostic/         Cuestionario público
+    api/diagnostics/    Ruta POST: valida, aplica el límite, calcula el puntaje, genera el informe con IA y guarda
+    admin/              Panel de administración: login, lista y detalle de diagnósticos
+  components/           Flujo del cuestionario, barras de puntaje, vista del informe con IA, vistas del panel
+  lib/                  Puntaje, preguntas, esquemas de validación, prompt y esquema del informe con IA
+    server/             Código solo de servidor: hash de IP, flujo de envío, clientes de Supabase y OpenAI
+    admin/              Acceso a datos y ayudas de sesión del panel
+    supabase/           Clientes de Supabase para el código de servidor y el proxy
+  proxy.ts              Mantiene vigente la sesión del panel y redirige las rutas /admin
 supabase/
-  migrations/           Database schema and RLS policies
-  seed/                 Fictional demo data and demo AI reports
-  tests/                RLS and seed tests on PGlite
+  migrations/           Esquema de la base de datos y políticas RLS
+  seed/                 Datos de demo ficticios e informes con IA de demo
+  tests/                Tests de RLS y de seed sobre PGlite
 docs/
-  spec.md               MVP specification (source of truth)
-  adr/                  Architecture decision records
+  spec.md               Especificación del MVP (fuente de verdad)
+  adr/                  Registros de decisiones de arquitectura (ADR)
 ```
 
-## 5. Main features
+## 5. Funcionalidades principales
 
-- **Questionnaire.** Company details (industry from a closed list, company size), then 15 questions, one area per screen with a progress bar, then contact details with a required consent checkbox. No login.
-- **Score and level.** Deterministic: each area scores 0 to 100 and the overall score is their average. The level (1 to 3) depends on the overall score, and level 3 also needs a minimum Governance score. The server recalculates everything; it never trusts a score sent by the browser.
-- **AI report.** A summary, exactly 3 suggested use cases (each with why, effort, risk and a first step) and one next step, written by OpenAI and validated with a zod schema. The model only receives industry, size, scores, level and answers, never the contact's name, email or company. If the model fails, times out or returns output that does not validate, the visitor still sees the level and scores with a notice, and the diagnostic is saved without a report.
-- **Admin panel.** Email and password login at `/admin`. It lists diagnostics newest first and opens each one with contact details, scores, answers and the AI report. The panel is read-only and reads with the signed-in user's session, so RLS applies.
-- **Read-only demo user.** A `demo` role that only sees rows marked as demo data (fictional companies and `@example.com` emails).
-- **Rate limit.** 5 submissions per IP per hour; the next one gets HTTP 429. The IP is never stored in clear text, only as an HMAC-SHA256 hash with a secret salt.
+- **Cuestionario.** Datos de la empresa (rubro de una lista cerrada, tamaño), luego 15 preguntas, un área por pantalla con barra de progreso, y al final los datos de contacto con una casilla de consentimiento obligatoria. Sin login.
+- **Puntaje y nivel.** Deterministas: cada área tiene un puntaje de 0 a 100 y el puntaje global es su promedio. El nivel (1 a 3) depende del puntaje global, y el nivel 3 además exige un puntaje mínimo en Governance. El servidor recalcula todo; nunca confía en un puntaje enviado por el navegador.
+- **Informe con IA.** Un resumen, exactamente 3 casos de uso sugeridos (cada uno con por qué, esfuerzo, riesgo y un primer paso) y un siguiente paso, escritos por OpenAI y validados con un esquema zod. El modelo solo recibe rubro, tamaño, puntajes, nivel y respuestas, nunca el nombre, el email ni la empresa del contacto. Si el modelo falla, se pasa del tiempo límite o devuelve una salida que no valida, el visitante igual ve el nivel y los puntajes con un aviso, y el diagnóstico se guarda sin informe.
+- **Panel de administración.** Login con email y contraseña en `/admin`. Lista los diagnósticos del más nuevo al más viejo y abre cada uno con los datos de contacto, puntajes, respuestas y el informe con IA. El panel es de solo lectura y lee con la sesión del usuario que inició sesión, así que se aplica RLS.
+- **Usuario demo de solo lectura.** Un rol `demo` que solo ve las filas marcadas como datos de demo (empresas ficticias y emails `@example.com`).
+- **Límite de envíos.** 5 envíos por IP por hora; el siguiente recibe HTTP 429. La IP nunca se guarda en claro, solo como hash HMAC-SHA256 con una sal secreta.
 
-Design decisions:
+Decisiones de diseño:
 
-- [ADR 0001](docs/adr/0001-audit-braces-dev.md): accepting the `npm audit` alert on `braces` (development only).
-- [ADR 0002](docs/adr/0002-cache-components-off.md): Cache Components turned off so missing diagnostics return a real 404.
-- [ADR 0003](docs/adr/0003-client-ip-on-vercel.md): taking the visitor IP from `x-forwarded-for` on Vercel.
-- [ADR 0004](docs/adr/0004-ai-report.md): AI report through the Vercel AI SDK and OpenAI, generated before saving.
+- [ADR 0001](docs/adr/0001-audit-braces-dev.md): aceptar la alerta de `npm audit` sobre `braces` (solo desarrollo).
+- [ADR 0002](docs/adr/0002-cache-components-off.md): Cache Components desactivado para que un diagnóstico inexistente devuelva un 404 real.
+- [ADR 0003](docs/adr/0003-client-ip-on-vercel.md): tomar la IP del visitante de `x-forwarded-for` en Vercel.
+- [ADR 0004](docs/adr/0004-ai-report.md): informe con IA mediante el Vercel AI SDK y OpenAI, generado antes de guardar.
 
-Specification: [docs/spec.md](docs/spec.md).
+Especificación: [docs/spec.md](docs/spec.md).
 
-## 6. Test user
+## 6. Usuario de prueba
 
-| Field | Value |
+| Campo | Valor |
 |---|---|
 | Email | `demo@example.com` |
-| Password | `DEMO_PASSWORD_HERE` |
+| Contraseña | `DEMO_PASSWORD_HERE` |
 
-Sign in at `/admin` on the deployed app. The demo user can only read, and only sees the 6 fictional demo diagnostics; real submissions are hidden from it by RLS.
+Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede leer y solo ve los 6 diagnósticos de demo ficticios; RLS le oculta los envíos reales.
 
-## 7. Links
+## 7. Enlaces
 
-- Deployed app: https://aibeacon-ai-readiness.vercel.app
+- App desplegada: https://aibeacon-ai-readiness.vercel.app
 - Slides: SLIDES_URL_HERE
 - Video: VIDEO_URL_HERE
 
-## Deployment
+## Despliegue
 
-- Hosted on Vercel, connected to this GitHub repository.
-- Set the environment variables from `.env.example` in Vercel for each environment that needs them (Preview, Production). Keep `SUPABASE_SECRET_KEY`, `IP_HASH_SALT` and `OPENAI_API_KEY` server only; never expose them with a `NEXT_PUBLIC_` prefix.
-- The project runs on the Vercel Hobby plan, used for the demo only.
+- Alojado en Vercel, conectado a este repositorio de GitHub.
+- Cargar las variables de entorno de `.env.example` en Vercel para cada entorno que las necesite (Preview, Production). `SUPABASE_SECRET_KEY`, `IP_HASH_SALT` y `OPENAI_API_KEY` quedan solo en el servidor; nunca exponerlas con el prefijo `NEXT_PUBLIC_`.
+- El proyecto corre en el plan Hobby de Vercel, usado solo para la demo.
 
-## License
+## Licencia
 
-MIT. See [LICENSE](LICENSE).
+MIT. Ver [LICENSE](LICENSE).
