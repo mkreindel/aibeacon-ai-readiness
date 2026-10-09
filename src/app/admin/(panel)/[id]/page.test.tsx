@@ -57,6 +57,7 @@ describe("/admin/[id]", () => {
       },
       scores: { dimensions: { data: 100, processes: 67, tools: 33, team: 0, governance: 56 }, global: 51 },
       level: 2,
+      report: null,
       is_demo: false,
     });
     render(await page(ID));

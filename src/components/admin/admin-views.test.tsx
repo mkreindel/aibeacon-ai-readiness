@@ -5,6 +5,7 @@ import { DiagnosticDetail } from "@/components/admin/diagnostic-detail";
 import { DiagnosticsTable } from "@/components/admin/diagnostics-table";
 import type { DiagnosticDetail as Detail, DiagnosticSummary } from "@/lib/admin/diagnostics";
 import { QUESTIONS } from "@/lib/questions";
+import type { Report } from "@/lib/report";
 
 const ID = "3f1c2a9e-1b2c-4d3e-8f40-123456789abc";
 
@@ -58,6 +59,21 @@ describe("DiagnosticDetail", () => {
       global: 51,
       level: 2,
     },
+    report: null,
+  };
+
+  const useCase = {
+    title: "Route planning from delivery spreadsheets",
+    why: "Dispatchers plan routes by hand every morning.",
+    effort: "medium",
+    risk: "low",
+    firstStep: "Export one week of delivery addresses.",
+  } as const;
+
+  const report: Report = {
+    summary: "Your data is solid. Your team is the area to strengthen first.",
+    useCases: [useCase, { ...useCase, title: "Invoice data entry" }, { ...useCase, title: "Fuel log checks" }],
+    nextStep: "Pick one dispatcher to pilot a route planning tool.",
   };
 
   it("shows contact, level, scores and the chosen option for every question", () => {
@@ -68,5 +84,19 @@ describe("DiagnosticDetail", () => {
     expect(screen.getByText(`${QUESTIONS.data[0].options[3]} (3/3)`)).toBeInTheDocument();
     expect(screen.getByText(`${QUESTIONS.governance[2].options[1]} (1/3)`)).toBeInTheDocument();
     expect(screen.queryByText(/Sample data/)).not.toBeInTheDocument();
+  });
+
+  it("shows the AI report when the diagnostic has one", () => {
+    render(<DiagnosticDetail diagnostic={{ ...detail, report }} />);
+    expect(screen.getByRole("heading", { name: "AI report" })).toBeInTheDocument();
+    expect(screen.getByText(report.summary)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Invoice data entry" })).toBeInTheDocument();
+    expect(screen.queryByText("No AI report for this diagnostic.")).not.toBeInTheDocument();
+  });
+
+  it("says there is no AI report when the diagnostic has none", () => {
+    render(<DiagnosticDetail diagnostic={detail} />);
+    expect(screen.getByRole("heading", { name: "AI report" })).toBeInTheDocument();
+    expect(screen.getByText("No AI report for this diagnostic.")).toBeInTheDocument();
   });
 });

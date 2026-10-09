@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DiagnosticsReader } from "@/lib/admin/diagnostics";
 
 const SUMMARY_COLUMNS = "id, created_at, company, industry, company_size, scores, level, is_demo";
-const DETAIL_COLUMNS = `${SUMMARY_COLUMNS}, contact_name, email, answers`;
+const DETAIL_COLUMNS = `${SUMMARY_COLUMNS}, contact_name, email, answers, report`;
 
 // Reads with the signed-in user's client, never the secret key, so RLS applies.
 export function createDiagnosticsReader(supabase: SupabaseClient): DiagnosticsReader {
