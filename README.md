@@ -102,6 +102,7 @@ supabase/
 docs/
   spec.md               Especificación del MVP (fuente de verdad)
   adr/                  Registros de decisiones de arquitectura (ADR)
+  slides.pdf            Slides de presentación del TFM (PDF)
 ```
 
 ## 5. Funcionalidades principales
@@ -134,7 +135,7 @@ Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede l
 ## 7. Enlaces
 
 - App desplegada: https://aibeacon-ai-readiness.vercel.app
-- Slides: SLIDES_URL_HERE
+- Slides: [docs/slides.pdf](docs/slides.pdf)
 - Video: VIDEO_URL_HERE
 
 ## Despliegue
