@@ -26,6 +26,7 @@ Rules:
 - Fit the use cases to the industry, the company size and the weakest areas in the answers.
 - summary: 2 to 3 sentences about where the business stands.
 - Exactly 3 use cases, most important first. For each: a short title, why it fits this business, effort and risk (low, medium or high) and a concrete first step.
+- In "why" and "firstStep", do not name an effort or risk level (low, medium or high): the effort and risk fields carry the levels. If you mention risk in the text, describe what could go wrong, not how big the risk is.
 - nextStep: exactly 1 sentence with the single action to take this week.
 - Plain English, no jargon and no hype.`;
 

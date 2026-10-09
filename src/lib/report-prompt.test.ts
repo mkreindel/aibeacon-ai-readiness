@@ -84,6 +84,13 @@ describe("REPORT_SYSTEM_PROMPT", () => {
     expect(REPORT_SYSTEM_PROMPT).toMatch(/"Unwritten" means rules exist but are not written down, not that there are no rules/);
   });
 
+  it("keeps effort and risk levels only in their fields, never in the text", () => {
+    expect(REPORT_SYSTEM_PROMPT).toMatch(
+      /In "why" and "firstStep", do not name an effort or risk level \(low, medium or high\)/,
+    );
+    expect(REPORT_SYSTEM_PROMPT).toMatch(/the effort and risk fields carry the levels/i);
+  });
+
   it("forbids changing the score or level", () => {
     expect(REPORT_SYSTEM_PROMPT).toMatch(/do not change, recalculate or contradict/i);
   });
