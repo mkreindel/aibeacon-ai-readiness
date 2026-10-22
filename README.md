@@ -136,7 +136,7 @@ Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede l
 
 - App desplegada: https://aibeacon-ai-readiness.vercel.app
 - Slides: [docs/slides.pdf](docs/slides.pdf)
-- Video: VIDEO_URL_HERE
+- Video: https://youtu.be/RdvT0KAL6nI
 
 ## Despliegue
 
