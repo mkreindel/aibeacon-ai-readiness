@@ -128,7 +128,7 @@ Especificación: [docs/spec.md](docs/spec.md).
 | Campo | Valor |
 |---|---|
 | Email | `demo@example.com` |
-| Contraseña | `DEMO_PASSWORD_HERE` |
+| Contraseña | `Mundial26!` |
 
 Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede leer y solo ve los 6 diagnósticos de demo ficticios; RLS le oculta los envíos reales.
 
