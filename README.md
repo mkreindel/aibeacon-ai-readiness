@@ -16,7 +16,7 @@ Las versiones son las fijadas en `package.json` e instaladas por `package-lock.j
 
 | Área | Tecnología |
 |---|---|
-| Framework | Next.js 16.4.0 (App Router), React 19.3.0, TypeScript 5.9 |
+| Framework | Next.js 16.4.5 (App Router), React 19.3.0, TypeScript 5.9 |
 | Estilos | Tailwind CSS 4 |
 | Validación | zod 4.6 |
 | Base de datos y autenticación | Supabase (Postgres con Row Level Security, autenticación con email y contraseña) mediante `@supabase/supabase-js` 2.117 y `@supabase/ssr` 0.12 |
@@ -125,16 +125,11 @@ Especificación: [docs/spec.md](docs/spec.md).
 
 ## 6. Usuario de prueba
 
-| Campo | Valor |
-|---|---|
-| Email | `demo@example.com` |
-| Contraseña | `Mundial26!` |
-
-Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede leer y solo ve los 6 diagnósticos de demo ficticios; RLS le oculta los envíos reales.
+La demo desplegada se dio de baja el 06/11/2026, después de la aprobación del TFM, y su usuario de prueba ya no existe. Para probar el panel, crear un usuario con rol `demo` en un proyecto propio de Supabase (ver "Base de datos") e iniciar sesión en `/admin`. El usuario demo solo puede leer y solo ve los 6 diagnósticos de demo ficticios; RLS le oculta los envíos reales.
 
 ## 7. Enlaces
 
-- App desplegada: https://aibeacon-ai-readiness.vercel.app
+- App desplegada: dada de baja el 06/11/2026 (el video muestra la demo completa).
 - Slides: [docs/slides.pdf](docs/slides.pdf)
 - Video: https://youtu.be/RdvT0KAL6nI
 
@@ -142,7 +137,7 @@ Se inicia sesión en `/admin` de la app desplegada. El usuario demo solo puede l
 
 - Alojado en Vercel, conectado a este repositorio de GitHub.
 - Cargar las variables de entorno de `.env.example` en Vercel para cada entorno que las necesite (Preview, Production). `SUPABASE_SECRET_KEY`, `IP_HASH_SALT` y `OPENAI_API_KEY` quedan solo en el servidor; nunca exponerlas con el prefijo `NEXT_PUBLIC_`.
-- El proyecto corre en el plan Hobby de Vercel, usado solo para la demo.
+- La demo corrió en Vercel hasta el 06/11/2026; para volver a desplegarla, crear un proyecto nuevo de Vercel y uno de Supabase y cargar las variables de entorno.
 
 ## Licencia
 
